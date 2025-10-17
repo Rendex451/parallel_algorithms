@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define BUFF_SIZE 20
+#define BUFF_SIZE 1000000
 
 #define ERR_MALLOC 1
 #define ERR_SEND_DATA 2
@@ -73,8 +73,6 @@ int main(int argc, char **argv)
         end_time = MPI_Wtime();
         exec_time = end_time - start_time;
 
-        MPI_Barrier(MPI_COMM_WORLD);
-
         puts("============= Execution Results =============");
         printf("Total zeroes: %d\n", total_zeros);
         printf("Num of proc: %d | Execution time: %.6f seconds",
@@ -105,7 +103,6 @@ int main(int argc, char **argv)
         }
 
         free(local_arr);
-        MPI_Barrier(MPI_COMM_WORLD);
     }
 
     MPI_Finalize();
