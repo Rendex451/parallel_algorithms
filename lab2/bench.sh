@@ -6,11 +6,11 @@ TEMP_FILE="temp_output.txt"
 # Создаем CSV файл с заголовком
 echo "processes,execution_time" > $OUTPUT_FILE
 
-for np in {1..16}; do
+for np in {1..16..2}; do
     echo "Запуск с $np процессами..."
     
     # Запускаем программу и сохраняем весь вывод во временный файл
-    mpirun --oversubscribe -np $np ./task2 2>&1 | tee "$TEMP_FILE"
+    mpirun --oversubscribe -np $np ./task 2>&1 | tee "$TEMP_FILE"
     
     # Ищем строку с количеством процессов и временем выполнения
     # Используем grep для поиска строки, затем sed для извлечения чисел

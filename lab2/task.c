@@ -3,13 +3,11 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define BUFF_SIZE 1000000
+#define BUFF_SIZE 30
 
 #define ERR_MALLOC 1
 #define ERR_SEND_DATA 2
 #define ERR_RECV_RESULT 3
-#define ERR_RECV_DATA 4
-#define ERR_SEND_RESULT 5
 
 int count_zeroes(int *arr, int size);
 
@@ -67,6 +65,7 @@ int main(int argc, char **argv)
                     != MPI_SUCCESS) {
                 free(arr); MPI_Abort(MPI_COMM_WORLD, ERR_RECV_RESULT);
             }
+            printf("Process %d: zeros = %d\n", status.MPI_SOURCE, proc_zeroes);
             total_zeros += proc_zeroes;
         }
 
@@ -81,28 +80,13 @@ int main(int argc, char **argv)
         free(arr);
     } else {
         int local_slice_size;
-        if (MPI_Recv(&local_slice_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &status) 
-                != MPI_SUCCESS) {
-            MPI_Abort(MPI_COMM_WORLD, ERR_RECV_DATA);
-        }
+        MPI_Recv(&local_slice_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &status);
         
-        int *local_arr = malloc(local_slice_size * sizeof(int));
-        if (!local_arr) {
-            MPI_Abort(MPI_COMM_WORLD, ERR_MALLOC);
-        }
-        if (MPI_Recv(local_arr, local_slice_size, MPI_INT, 0, 0, MPI_COMM_WORLD, &status)
-                != MPI_SUCCESS) {
-            free(local_arr); MPI_Abort(MPI_COMM_WORLD, ERR_RECV_DATA);
-        }
-
-        int local_zeros = count_zeroes(local_arr, local_slice_size); 
-        printf("Process %d: zeros = %d\n", rank, local_zeros);
-        if (MPI_Send(&local_zeros, 1, MPI_INT, 0, 2, MPI_COMM_WORLD) 
-                != MPI_SUCCESS) {
-            free(local_arr); MPI_Abort(MPI_COMM_WORLD, ERR_SEND_RESULT);
-        }
-
-        free(local_arr);
+        int local_arr[local_slice_size];
+        MPI_Recv(local_arr, local_slice_size, MPI_INT, 0, 0, MPI_COMM_WORLD, &status);
+        
+        int local_zeros = count_zeroes(local_arr, local_slice_size);
+        MPI_Send(&local_zeros, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
     }
 
     MPI_Finalize();
