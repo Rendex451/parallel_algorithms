@@ -3,132 +3,111 @@
 #include <mpi.h>
 #include <time.h>
 
-#define ROWS 100
-#define COLS 100
+#define ROWS 10
+#define COLS 10
 
-int** allocate_matrix(int rows, int cols) {
-    int **matrix = (int**)malloc(rows * sizeof(int*));
-    for (int i = 0; i < rows; i++) {
-        matrix[i] = (int*)malloc(cols * sizeof(int));
+void init_matrix(int *matrix, int rows, int cols)
+{
+    for (int i = 0; i < rows * cols; ++i) {
+        matrix[i] = rand() % 100 + 1;
     }
-    return matrix;
 }
 
-void free_matrix(int **matrix, int rows) {
-    for (int i = 0; i < rows; i++) {
-        free(matrix[i]);
+void print_matrix(int *matrix, int rows, int cols)
+{
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < cols; ++j) {
+            printf("%3d ", matrix[i * cols + j]);
+        }
+        printf("\n");
     }
-    free(matrix);
 }
 
-void fill_matrix(int **matrix, int rows, int cols) {
-    srand(clock());
-    for (int i = 0; i < rows; ++i)
-        for (int j = 0; j < cols; ++j)
-            matrix[i][j] = rand() % 100;
-}
-
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
     int rank, size;
-    int rows, cols;
-    int **matrix;
     double start_time, end_time;
-
+    
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
-
-    rows = ROWS;
-    cols = COLS;
-
-    if (rank == 0) {
-        matrix = allocate_matrix(rows, cols);
-        fill_matrix(matrix, rows, cols);
-    }
-
-    int rows_per_proc = rows / size;
-    int rem = rows % size;
-
+    
+    int total_rows = ROWS, total_cols = COLS;
+    int total_elements = total_rows * total_cols;
+    
+    int rows_per_proc = total_rows / size;
+    int rem = total_rows % size;
+    
     int local_rows;
     if (rank < rem) {
         local_rows = rows_per_proc + 1;
     } else {
         local_rows = rows_per_proc;
     }
-
-        // Выделяем память для локальной части матрицы
-    int **local_matrix = allocate_matrix(local_rows, cols);
     
-    // Создаем массивы для MPI_Scatterv
-    int *sendcounts = NULL;
-    int *displs = NULL;
+    int local_elements = local_rows * total_cols;
+    
+    int *local_matrix = (int*)malloc(local_elements * sizeof(int));
+    int *full_matrix = NULL;
     
     if (rank == 0) {
-        sendcounts = (int*)malloc(size * sizeof(int));
-        displs = (int*)malloc(size * sizeof(int));
+        full_matrix = (int*)malloc(total_elements * sizeof(int));
+        srand(time(NULL));
+        init_matrix(full_matrix, total_rows, total_cols);
+        
+        puts("============= Input Matrix =============");
+        print_matrix(full_matrix, total_rows, total_cols);
+        
+        start_time = MPI_Wtime();
+        
+        int *sendcounts = (int*)malloc(size * sizeof(int));
+        int *displs = (int*)malloc(size * sizeof(int));
         
         int offset = 0;
-        for (int i = 0; i < size; i++) {
-            int rows_for_i = (i < remainder) ? rows_per_process + 1 : rows_per_process;
-            sendcounts[i] = rows_for_i * cols;
-            displs[i] = offset;
-            offset += sendcounts[i];
+        for (int i = 0; i < size; ++i) {
+            int rows_for_i = (i < rem) ? rows_per_proc + 1 : rows_per_proc;
+            sendcounts[i] = rows_for_i * total_cols;
+            displs[i] = offset * total_cols;
+            offset += rows_for_i;
         }
         
-        // Создаем одномерный буфер для рассылки
-        int *send_buffer = (int*)malloc(rows * cols * sizeof(int));
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) {
-                send_buffer[i * cols + j] = matrix[i][j];
-            }
-        }
-        
-        // Рассылаем данные
-        MPI_Scatterv(send_buffer, sendcounts, displs, MPI_INT,
-                    local_matrix[0], local_rows * cols, MPI_INT,
+        MPI_Scatterv(full_matrix, sendcounts, displs, MPI_INT,
+                    local_matrix, local_elements, MPI_INT,
                     0, MPI_COMM_WORLD);
         
-        free(send_buffer);
+        free(sendcounts);
+        free(displs);
+        
     } else {
-        // Принимаем свою часть данных
+        start_time = MPI_Wtime();
         MPI_Scatterv(NULL, NULL, NULL, MPI_INT,
-                    local_matrix[0], local_rows * cols, MPI_INT,
+                    local_matrix, local_elements, MPI_INT,
                     0, MPI_COMM_WORLD);
     }
     
-    // Синхронизация перед началом параллельного вычисления
-    MPI_Barrier(MPI_COMM_WORLD);
-    start_time = MPI_Wtime();
-    
-    // Вычисляем локальную сумму
-    long long local_sum = 0;
-    for (int i = 0; i < local_rows; i++) {
-        for (int j = 0; j < cols; j++) {
-            local_sum += local_matrix[i][j];
-        }
+    int local_sum = 0;
+    for (int i = 0; i < local_elements; ++i) {
+        local_sum += local_matrix[i];
     }
     
-    // Собираем все локальные суммы
-    long long global_sum = 0;
-    MPI_Reduce(&local_sum, &global_sum, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    int global_sum;
+    MPI_Reduce(&local_sum, &global_sum, 1, MPI_INT, 
+        MPI_SUM, 0, MPI_COMM_WORLD);
     
     end_time = MPI_Wtime();
     
-    // Выводим результаты
     if (rank == 0) {
-        printf("Параллельная сумма: %lld, время: %.6f сек\n", 
-               global_sum, end_time - start_time);
-        printf("Разница: %lld\n", llabs(seq_sum - global_sum));
+        puts("============= Execution Results =============");
+        printf("Total sum: %d\n", global_sum);
+        printf("Number of processes: %d\n", size);
+        printf("Num of proc: %d | Execution time: %.6f seconds",
+                size, end_time - start_time);
         
-        // Освобождаем память
-        free_matrix(matrix, rows);
-        free(sendcounts);
-        free(displs);
+        free(full_matrix);
     }
     
-    // Освобождаем локальную память
-    free_matrix(local_matrix, local_rows);
-    
+    free(local_matrix);
     MPI_Finalize();
+    
     return 0;
 }

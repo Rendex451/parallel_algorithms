@@ -1,7 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-df = pd.read_csv('execution_times.csv')
+df = pd.read_csv('execution_times_big.csv')
 
 process_col = df.columns[0]
 time_col = df.columns[1]
@@ -20,5 +20,5 @@ plt.title('Ускорение программы')
 plt.grid(True)
 
 plt.tight_layout()
-plt.savefig('speedup.png', dpi=300)
+plt.savefig('speedup_big.png', dpi=300)
 plt.show()
