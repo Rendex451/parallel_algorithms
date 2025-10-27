@@ -99,7 +99,6 @@ int main(int argc, char *argv[])
     if (rank == 0) {
         puts("============= Execution Results =============");
         printf("Total sum: %d\n", global_sum);
-        printf("Number of processes: %d\n", size);
         printf("Num of proc: %d | Execution time: %.6f seconds",
                 size, end_time - start_time);
         
