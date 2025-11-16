@@ -3,7 +3,8 @@
 #include <stdlib.h>
 #include <time.h>
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv) 
+{
     int world_rank, world_size;
     double start_time, end_time;
 

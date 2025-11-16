@@ -6,7 +6,7 @@ TEMP_FILE="temp_output.txt"
 # Создаем CSV файл с заголовком
 echo "processes,execution_time" > $OUTPUT_FILE
 
-for np in {1..16..2}; do
+for np in {3..24..3}; do
     echo "Запуск с $np процессами..."
     
     # Запускаем программу и сохраняем весь вывод во временный файл
