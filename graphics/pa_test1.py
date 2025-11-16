@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Чтение CSV файла
-df = pd.read_csv('execution_times_big.csv')
+df = pd.read_csv('execution_times.csv')
 
 # Создание графика
 plt.figure(figsize=(12, 8))
@@ -15,5 +15,5 @@ plt.ylabel('Время выполнения (секунды)')
 plt.title('Зависимость времени выполнения от количества процессов')
 plt.grid(True, alpha=0.3)
 plt.legend()
-plt.savefig('execution_time_big_plot.png', dpi=300, bbox_inches='tight')
+plt.savefig('lab4_execution_time_plot.png', dpi=300, bbox_inches='tight')
 plt.show()
